@@ -3,14 +3,17 @@ function $(id) { return document.querySelector(id); }
 var background = chrome.extension.getBackgroundPage();
 // Images from the screen capture
 var images = background.images;
+var moves = background.moves;
 var currentIndex = 0;
 // Where to render the image
 var $image = $('#image');
 // Playback timer
 var timer = null;
-
+//cnvas ctx
+var ctx= null;
 document.addEventListener('DOMContentLoaded', function() {
   // Setup listeners for rew, pp, ff and slider
+  ctx= $image.getContext('2d');
   $('#slider').addEventListener('change', function(event) {
     var ratio = $('#slider').value / 100;
     setIndex(parseInt((images.length - 1) * ratio, 10));
@@ -40,6 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
   setIndex(currentIndex);
   // Set the state to playback
   setState('playback');
+  
 });
 
 function updateSliderPosition() {
@@ -60,19 +64,12 @@ function play() {
   // Update icon
   $('#playpause').className = 'pause';
   // If already at the end, restart
-  if (currentIndex == images.length - 1) {
+  if (currentIndex >= images.length - 1) {
     setIndex(0);
     updateSliderPosition();
   }
   // Load images and render them in sequence
-  timer = setInterval(function() {
-    if (currentIndex >= images.length - 1) {
-      pause();
-      return;
-    }
-    setIndex(currentIndex + 1);
-    updateSliderPosition();
-  }, 1000 / background.FPS);
+  timer = setInterval(render);
 }
 
 function pause() {
@@ -81,14 +78,41 @@ function pause() {
   timer = null;
 }
 
+function render () {
+    if (currentIndex >= images.length - 1) {
+      pause();
+      return;
+    }
+    setIndex(currentIndex + 1);
+    updateSliderPosition();
+}
+
 function setIndex(index) {
+
+  function gcd (a, b) {
+       return (b == 0) ? a : gcd (b, a%b);
+   }
+
   if (index >= images.length) {
     console.error('Index out of bounds');
     return;
   }
   currentIndex = index;
-  // TODO: validate index
-  $image.src = images[index];
+  ctx.fillStyle = "rgb(0,0,0)";
+  ctx.fillRect (0,0,$image.width,$image.height);
+  var img = images[index];
+  var aspc_rc = $image.width/$image.height
+  if ($image.width > img.width) {
+    ctx.drawImage(img,($image.width/aspc_rc)/2, 0,$image.width-($image.width/aspc_rc),$image.height);
+  }else{
+    ctx.drawImage(img,0, ($image.height*aspc_rc)/2,$image.width,$image.height-($image.height*aspc_rc));
+  }
+  if (moves[index]) {
+    ctx.fillStyle = "rgb(255,0,0)";
+    //TODO: Recalculate position
+    ctx.fillRect(moves[index].x ,moves[index].y,4,4);
+  };
+
 }
 
 function shareVideo() {

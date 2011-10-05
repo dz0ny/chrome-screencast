@@ -1,19 +1,36 @@
-var FPS = 10;
+var FPS = 15;
 var QUALITY = 50;
 
 var isRecording = false;
 var timer = null;
+var mouseLatest = null;
 var images = [];
+var moves = [];
 
 function startRecording() {
   // Update icon to show that it's recording
   chrome.browserAction.setIcon({path: 'images/icon-rec.png'});
   chrome.browserAction.setTitle({title: 'Stop recording.'});
   images = [];
+  //reset mouse
+  mouseLatest = null;
+  moves = []
+  //add listner for mouse moves
+  //TODO:Implement background comunication, and inject mouse move script
+  chrome.tabs.executeScript(null,{code:"document.addEventListener(\"mousemove\", function (pos) { chrome.extension.sendRequest({x: pos.clientX, y: pos.clientY}); }, true );"})
+  chrome.extension.onRequest.addListener(
+    function(req, sender, sendResponse) {
+      mouseLatest = req;
+    }
+  );
+
   // Set up a timer to regularly get screengrabs
   timer = setInterval(function() {
     chrome.tabs.captureVisibleTab(null, {quality: QUALITY}, function(img) {
-      images.push(img);
+      var imgS = new Image();
+      imgS.src = img;
+      images.push(imgS);
+      moves.push(mouseLatest);
     });
   }, 1000 / FPS);
 }
